@@ -1,6 +1,6 @@
 import type { Client } from './types';
 
-const API_BASE = "https://39bd58c1b14c.ngrok-free.app/api/v1";
+const API_BASE = "https://ed0a4144fda3.ngrok-free.app/api/v1";
 
 async function fetchApi(url: string, options: RequestInit = {}) {
   const headers = {

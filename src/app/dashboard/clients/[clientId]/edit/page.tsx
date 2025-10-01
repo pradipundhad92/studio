@@ -5,7 +5,7 @@ import { getClientById } from "@/lib/api";
 
 // This is a simplified way to pass tenantId to a server component.
 // In a real app, you might get this from a cookie or other server-side auth context.
-const MOCK_TENANT_ID = "c5b6a7d8-e9f0-4g1h-2i3j-k4l5m6n7o8p9";
+const MOCK_TENANT_ID = "68da488d658c115328266179";
 
 export default async function EditClientPage({
   params,

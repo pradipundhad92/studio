@@ -49,7 +49,7 @@ export default function LoginPage() {
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // In a real app, you would validate the response from your backend
-    const mockTenantId = "c5b6a7d8-e9f0-4g1h-2i3j-k4l5m6n7o8p9";
+    const mockTenantId = "68da488d658c115328266179";
     const mockJwt = "mock-jwt-token";
 
     login(mockJwt, mockTenantId);
