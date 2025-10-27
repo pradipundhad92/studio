@@ -1,47 +1,162 @@
-import type { Client } from './types';
+import type { Client, GetClientsResponse, NewClient } from "./types";
 
-const API_BASE = "https://ed0a4144fda3.ngrok-free.app/api/v1";
-
-async function fetchApi(url: string, options: RequestInit = {}) {
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
-
-  const response = await fetch(url, { ...options, headers });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred' }));
-    throw new Error(errorData.message || `API request failed with status ${response.status}`);
-  }
-
-  return response.json();
+interface ApiListResponse {
+    success: boolean;
+    message: string;
+    data: GetClientsResponse;
 }
 
-export const getClients = (tenantId: string): Promise<Client[]> => {
-  return fetchApi(`${API_BASE}/clients/${tenantId}`);
-};
+interface ApiSingleResponse {
+    success: boolean;
+    message: string;
+    data: Client;
+}
 
-export const getClientById = (tenantId: string, clientId: string): Promise<Client> => {
-    return fetchApi(`${API_BASE}/clients/${tenantId}/${clientId}`);
-};
 
-export const addClient = (tenantId: string, data: Partial<Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'tenantId'>>): Promise<Client> => {
-  return fetchApi(`${API_BASE}/clients/${tenantId}`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
+interface ApiAddResponse {
+    success: boolean;
+    message: string;
+}
 
-export const updateClient = (tenantId: string, clientId: string, data: Partial<Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'tenantId'>>): Promise<Client> => {
-  return fetchApi(`${API_BASE}/clients/${tenantId}/${clientId}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-};
+// Function to retrieve a paginated list of clients
+export async function getClients(tenantId: string, token: string, page: number, limit: number): Promise<GetClientsResponse> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    if (!baseUrl) {
+        throw new Error("API base URL is not configured.");
+    }
 
-export const deleteClient = (tenantId: string, clientId: string): Promise<{ message: string }> => {
-  return fetchApi(`${API_BASE}/clients/${tenantId}/${clientId}`, {
-    method: 'DELETE',
-  });
-};
+    const url = `${baseUrl}/clients/${tenantId}?page=${page}&limit=${limit}`;
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.message || `Failed to fetch clients. Status: ${response.status}`);
+        }
+
+        const responseData: ApiListResponse = await response.json();
+        if (!responseData.success) {
+            throw new Error(responseData.message || "API returned a non-successful response.");
+        }
+
+        return responseData.data;
+    } catch (error) {
+        console.error("Error getting clients:", error);
+        throw error instanceof Error ? error : new Error("An unknown error occurred.");
+    }
+}
+
+// Function to add a new client
+export async function addClient(tenantId: string, token: string, newClient: NewClient): Promise<ApiAddResponse> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    if (!baseUrl) {
+        throw new Error("API base URL is not configured.");
+    }
+
+    const url = `${baseUrl}/clients/${tenantId}`;
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(newClient),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.message || `Failed to add client. Status: ${response.status}`);
+        }
+
+        const responseData: ApiAddResponse = await response.json();
+        if (!responseData.success) {
+            throw new Error(responseData.message || "API returned a non-successful response.");
+        }
+
+        return responseData;
+    } catch (error) {
+        console.error("Error adding client:", error);
+        throw error instanceof Error ? error : new Error("An unknown error occurred.");
+    }
+}
+
+// Function to retrieve a single client by ID
+export async function getClient(tenantId: string, token: string, clientId: string): Promise<Client> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    if (!baseUrl) {
+        throw new Error("API base URL is not configured.");
+    }
+
+    const url = `${baseUrl}/clients/${tenantId}/${clientId}`;
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.message || `Failed to fetch client. Status: ${response.status}`);
+        }
+
+        const responseData: ApiSingleResponse = await response.json();
+        if (!responseData.success) {
+            throw new Error(responseData.message || "API returned a non-successful response.");
+        }
+
+        return responseData.data;
+    } catch (error) {
+        console.error("Error getting client:", error);
+        throw error instanceof Error ? error : new Error("An unknown error occurred.");
+    }
+}
+
+
+// Function to update an existing client
+export async function updateClient(tenantId: string, token: string, clientId: string, updatedClient: Partial<NewClient>): Promise<ApiAddResponse> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    if (!baseUrl) {
+        throw new Error("API base URL is not configured.");
+    }
+
+    const url = `${baseUrl}/clients/${tenantId}/${clientId}`;
+
+    try {
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(updatedClient),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.message || `Failed to update client. Status: ${response.status}`);
+        }
+
+        const responseData: ApiAddResponse = await response.json();
+        if (!responseData.success) {
+            throw new Error(responseData.message || "API returned a non-successful response.");
+        }
+
+        return responseData;
+    } catch (error) {
+        console.error("Error updating client:", error);
+        throw error instanceof Error ? error : new Error("An unknown error occurred.");
+    }
+}

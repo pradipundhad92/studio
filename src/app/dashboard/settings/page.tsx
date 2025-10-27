@@ -1,3 +1,6 @@
+'use client';
+
+import { useAuth } from "@/hooks/use-auth";
 import {
   Card,
   CardContent,
@@ -11,6 +14,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 export default function SettingsPage() {
+  const { name, email, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div>Loading...</div>; // Or a spinner component
+  }
+
   return (
     <Tabs defaultValue="profile">
       <TabsList className="grid w-full grid-cols-3">
@@ -29,11 +38,11 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" defaultValue="Current User" />
+              <Input id="name" defaultValue={name || ''} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" defaultValue="user@example.com" />
+              <Input id="email" type="email" defaultValue={email || ''} />
             </div>
             <Button>Save Changes</Button>
           </CardContent>

@@ -1,14 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useTransition } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-
-import { useAuth } from "@/hooks/use-auth";
-import { getClients } from "@/lib/api";
-import type { Client } from "@/lib/types";
-
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   Table,
   TableBody,
@@ -17,179 +10,156 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
-import { deleteClientAction } from "../actions";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getClients } from '@/lib/api';
+import { useAuth } from '@/hooks/use-auth';
+import type { Client, Pagination } from '@/lib/types';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+const ClientRow = ({ client }: { client: Client }) => (
+  <TableRow key={client._id}>
+    <TableCell>
+       <Avatar>
+          <AvatarImage src={client.profileUrl} alt={client.name} />
+          <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
+        </Avatar>
+    </TableCell>
+    <TableCell>{client.name}</TableCell>
+    <TableCell>{client.email}</TableCell>
+    <TableCell>{client.phone || 'N/A'}</TableCell>
+    <TableCell>
+      <Link href={`/dashboard/clients/${client._id}/edit`}>
+        <Button variant="outline" size="sm">Edit</Button>
+      </Link>
+    </TableCell>
+  </TableRow>
+);
+
+const CLIENTS_PER_PAGE = 10;
 
 export default function ClientTable() {
-  const { tenantId } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
-
-  const { toast } = useToast();
+  const { tenantId, token } = useAuth();
 
   useEffect(() => {
-    if (tenantId) {
-      setLoading(true);
-      getClients(tenantId)
-        .then((data) => {
-          setClients(data);
-          setError(null);
-        })
-        .catch((err) => {
-          setError(err.message || "Failed to fetch clients.");
-        })
-        .finally(() => {
-          setLoading(false);
+    if (!tenantId || !token) return;
+
+    const fetchClients = async () => {
+      try {
+        setLoading(true);
+        const { clients: fetchedClients, pagination: newPagination } = await getClients(
+          tenantId,
+          token,
+          currentPage,
+          CLIENTS_PER_PAGE
+        );
+
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api/v1', '');
+        const processedClients = fetchedClients.map(client => {
+            let imageUrl = '';
+            if (client.profileUrl && baseUrl) {
+                const pathParts = client.profileUrl.replace(/\\/g, '/').split('/public/');
+                if (pathParts.length > 1) {
+                    imageUrl = `${baseUrl}/${pathParts[1]}`;
+                }
+            }
+            return { ...client, profileUrl: imageUrl };
         });
-    }
-  }, [tenantId]);
-  
-  const handleDeleteConfirmation = (client: Client) => {
-    setClientToDelete(client);
-  };
 
-  const handleDelete = () => {
-    if (!clientToDelete || !tenantId) return;
-
-    startTransition(async () => {
-      const result = await deleteClientAction(tenantId, clientToDelete.id);
-      if (result.success) {
-        setClients(clients.filter(c => c.id !== clientToDelete.id));
-        toast({ title: "Success", description: "Client deleted successfully." });
-      } else {
-        toast({ variant: "destructive", title: "Error", description: result.error });
+        setClients(processedClients);
+        setPagination(newPagination);
+        setError(null);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch clients');
+      } finally {
+        setLoading(false);
       }
-      setClientToDelete(null);
-    });
+    };
+
+    fetchClients();
+  }, [tenantId, token, currentPage]);
+
+  const handlePreviousPage = () => {
+    if (pagination && pagination.current > 1) {
+      setCurrentPage(pagination.current - 1);
+    }
   };
 
+  const handleNextPage = () => {
+    if (pagination && pagination.current < pagination.total) {
+      setCurrentPage(pagination.current + 1);
+    }
+  };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      <div className="space-y-2">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
       </div>
     );
   }
 
   if (error) {
-    return (
-      <div className="text-center text-destructive py-4">
-        <p>Error: {error}</p>
-        <p>Please try refreshing the page.</p>
-      </div>
-    );
-  }
-
-  if (clients.length === 0) {
-    return (
-        <div className="text-center py-10">
-            <h3 className="text-xl font-semibold">No clients yet</h3>
-            <p className="text-muted-foreground mt-2">Add your first client to get started.</p>
-        </div>
-    );
+    return <div className="text-red-500 text-center">Error: {error}</div>;
   }
 
   return (
     <>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Profile</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Phone</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {clients.length > 0 ? (
+            clients.map(client => <ClientRow key={client._id} client={client} />)
+          ) : (
             <TableRow>
-              <TableHead>Client</TableHead>
-              <TableHead className="hidden md:table-cell">Email</TableHead>
-              <TableHead className="hidden sm:table-cell">Phone</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
+              <TableCell colSpan={5} className="text-center">No clients found.</TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {clients.map((client) => (
-              <TableRow key={client.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={client.profilePictureUrl} alt={client.name} data-ai-hint="person avatar"/>
-                      <AvatarFallback>
-                        {client.name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="font-medium">{client.name}</div>
-                  </div>
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  {client.email}
-                </TableCell>
-                <TableCell className="hidden sm:table-cell">
-                  {client.phone}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button aria-haspopup="true" size="icon" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link href={`/dashboard/clients/${client.id}/edit`}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDeleteConfirmation(client)} className="text-destructive focus:text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-      <AlertDialog open={!!clientToDelete} onOpenChange={(open) => !open && setClientToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the client
-              <span className="font-semibold"> {clientToDelete?.name}</span> and remove their data from our servers.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
-              {isPending ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          )}
+        </TableBody>
+      </Table>
+
+      {pagination && (
+        <div className="flex items-center justify-between mt-4">
+          <div>
+            <p className="text-sm text-muted-foreground">
+              Page {pagination.current} of {pagination.total}
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePreviousPage}
+              disabled={pagination.current <= 1}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNextPage}
+              disabled={pagination.current >= pagination.total}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
