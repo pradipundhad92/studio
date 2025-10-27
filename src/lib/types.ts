@@ -1,24 +1,40 @@
 export interface Client {
-  id: string;
+  _id: string;
+  tenantId: string;
   name: string;
   email: string;
-  phone: string;
-  profilePictureUrl: string;
-  tenantId: string;
+  phone?: string;
+  isActive: boolean;
+  profileUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface User {
-  id: string;
+export interface Project {
+  _id: string;
+  clientId: string;
   name: string;
-  email: string;
-  role: 'admin' | 'user';
+  status: 'Not Started' | 'In Progress' | 'Completed';
+  progress: number;
+  updatedAt: string;
 }
 
-export interface Tenant {
-  id: string;
-  name: string;
-  users: User[];
-  clients: Client[];
+export interface Pagination {
+  current: number;
+  total: number;
+  count: number;
+  totalRecords: number;
 }
+
+export interface GetClientsResponse {
+  clients: Client[];
+  pagination: Pagination;
+}
+
+// Type for creating a new client, omits server-generated fields
+export type NewClient = Omit<Client, '_id' | 'tenantId' | 'createdAt' | 'updatedAt' | 'isActive' | 'profileUrl'> & {
+    profileImageBinary?: string;
+};
+
+// Type for creating a new project, omits server-generated fields
+export type NewProject = Omit<Project, '_id' | 'clientId' | 'updatedAt'>;

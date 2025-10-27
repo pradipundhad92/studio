@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useEffect } from "react";
 import Link from "next/link";
@@ -10,6 +10,7 @@ import {
   Settings,
   LogOut,
   PanelLeft,
+  PlusCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -74,17 +75,32 @@ export default function DashboardLayout({
         <SidebarContent>
           <SidebarMenu>
             {navItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <Link href={item.href} passHref>
-                  <SidebarMenuButton
-                    isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
-                    tooltip={item.label}
-                  >
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
+              <React.Fragment key={item.href}>
+                <SidebarMenuItem>
+                  <Link href={item.href} passHref>
+                    <SidebarMenuButton
+                      isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
+                      tooltip={item.label}
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+                {item.href === '/dashboard/clients' && (
+                  <SidebarMenuItem className="ml-4">
+                     <Link href="/dashboard/clients/add" passHref>
+                        <SidebarMenuButton
+                          isActive={pathname === '/dashboard/clients/add'}
+                           tooltip="Create Client"
+                        >
+                          <PlusCircle size={18} />
+                          <span>Create Client</span>
+                        </SidebarMenuButton>
+                      </Link>
+                  </SidebarMenuItem>
+                )}
+            </React.Fragment>
             ))}
           </SidebarMenu>
         </SidebarContent>
